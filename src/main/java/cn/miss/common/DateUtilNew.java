@@ -4,14 +4,15 @@ import cn.miss.common.lambda.LambdaUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Field;
+import java.text.SimpleDateFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+
+import static cn.miss.common.FreeCombination.*;
 
 /**
  * @Author: zhoulinshun
@@ -34,16 +35,16 @@ public class DateUtilNew {
         List<String> months = Arrays.asList("", "MM", "M");
         List<String> days = Arrays.asList("", "dd", "d");
         List<String> prefixSplits = Arrays.asList("-", "", "/");
-        List<String> midSplits = Arrays.asList("", " ");
+        List<String> midSplits = Collections.singletonList(" ");
         List<String> hours = Arrays.asList("", "H", "HH");
         List<String> mins = Arrays.asList("", "m", "mm");
         List<String> seconds = Arrays.asList("", "s", "ss");
         List<String> millisecondSplits = Arrays.asList("", " ", ".");
         List<String> millisecond = Arrays.asList("", "S", "SS");
         List<String> suffixSplits = Arrays.asList("", ":");
-        Stream<String> concat = concat(years, prefixSplits, months, prefixSplits, days, midSplits, hours, suffixSplits, mins, suffixSplits, seconds, millisecondSplits, millisecond);
+        Stream<String> concat = combination(FreeCombination.strConcat(), years, prefixSplits, months, prefixSplits, days, midSplits, hours, suffixSplits, mins, suffixSplits, seconds, millisecondSplits, millisecond);
 
-        Stream<String> unStreams = concat(prefixSplits, midSplits, suffixSplits, millisecondSplits);
+        Stream<String> unStreams = combination(String::concat, prefixSplits, midSplits, suffixSplits, millisecondSplits);
         List<String> unStr = unStreams.filter(StringUtils::isNotBlank).filter(s -> s.length() > 1).collect(Collectors.toList());
         unStr.add("//");
         unStr.add("--");
@@ -68,70 +69,21 @@ public class DateUtilNew {
         }
     }
 
-    public static Stream<String> concat(List<String>... lists) {
-        if (lists == null || lists.length == 0) {
-            return Stream.empty();
-        }
-        if (lists.length == 1) {
-            return Stream.empty();
-        }
-        List<String> begin = lists[0];
-        Stream<String> stringStream = begin.stream();
-        for (int i = 1; i < lists.length; i++) {
-            List<String> next = lists[i];
-            stringStream = stringStream.flatMap(s -> mapper(s, next));
-        }
-        return stringStream;
-    }
-
-    public static Stream<String> clean(Stream<String> stringStream, List<Predicate<String>> predicates) {
-        if (predicates != null) {
-            for (Predicate<String> predicate : predicates) {
-                stringStream = stringStream.filter(predicate);
-            }
-        }
-        return stringStream;
-    }
-
-    public static List<Predicate<String>> filter(List<String> un, List<String> unStr) {
-        List<Predicate<String>> results = new ArrayList<>();
-        if (un != null) {
-            for (String s : un) {
-                if (s.length() > 0) {
-                    results.add((str) -> !str.startsWith(s));
-                    results.add((str) -> !str.endsWith(s));
-                }
-            }
-        }
-        if (unStr != null) {
-            for (String s : unStr) {
-                if (s.length() > 0) {
-                    results.add(str -> !str.contains(s));
-                }
-            }
-        }
-        results.add(str -> str.length() != 0);
-        return results;
-    }
-
-    public static Stream<String> mapper(String s, Iterable<String> next) {
-        return StreamSupport.stream(next.spliterator(), true).map(d -> {
-            return s + d;
-        });
-    }
-
 
     public static LocalDateTime parse(String str) {
         for (DateTimeFormatter formatter : formatters) {
             try {
-                return parse(str, formatter);
+                LocalDateTime parse = parse(str, formatter);
+                System.out.println(formatter);
+                return parse;
             } catch (Exception ignored) {
             }
         }
         List<String> patterns = lengthPatterns.get(str.length());
         for (String pattern : patterns) {
             try {
-                return parse(str, pattern);
+                Date parse = new SimpleDateFormat(pattern).parse(str);
+                return LocalDateTime.ofInstant(parse.toInstant(),ZoneId.systemDefault());
             } catch (Exception ignored) {
             }
         }
@@ -192,8 +144,8 @@ public class DateUtilNew {
 
     public static void main(String[] args) {
         LocalDateTime parse = parse("2018-10-11 11:01:10");
+        parse("2018-1-1");
         System.out.println(parse);
-
     }
 
 }
